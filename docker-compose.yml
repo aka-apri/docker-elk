@@ -16,8 +16,6 @@ services:
     environment:
       ES_JAVA_OPTS: "-Xmx256m -Xms256m"
     restart: unless-stopped      
-    networks:
-      - elk
 
   logstash:
     build:
@@ -32,8 +30,6 @@ services:
       - "9600:9600"
     environment:
       LS_JAVA_OPTS: "-Xmx256m -Xms256m"
-    networks:
-      - elk
     restart: unless-stopped            
     depends_on:
       - elasticsearch
@@ -53,8 +49,6 @@ services:
         - "5050:5050"
         - "5051:5051"
         - "9650:9650"
-    networks:
-      - elk
     restart: unless-stopped            
     depends_on:
       - elasticsearch
@@ -72,9 +66,8 @@ services:
       - VIRTUAL_HOST=kibana.xxx.xxx.com
       - VIRTUAL_PORT=5601
       - LETSENCRYPT_HOST=kibana.xxx.xxx.com
-    networks:
-      - elk
-      - webproxy     
+    # networks:
+    #   - webproxy     
     restart: unless-stopped             
     depends_on:
       - elasticsearch
@@ -83,24 +76,20 @@ services:
     build: jk-import-dashboards/
     environment:
         - ELASTICSEARCH_URL=http://elasticsearch:9200
-    networks:
-      - elk
     depends_on:
       - elasticsearch
+      - kibana      
 
-  jk-alerter:
-    build: jk-alerter/
-    environment:
-        - WEBHOOK_URL=https://
-    volumes:
-      - ./jk-alerter/config.yaml:/opt/elastalert/config.yaml
-      - ./alerts/rules/:/opt/elastalert/rules
-    networks:
-      - elk
-    restart: unless-stopped      
-    depends_on:
-      - elasticsearch
-
+  # jk-alerter:
+  #   build: jk-alerter/
+  #   environment:
+  #       - WEBHOOK_URL=https://
+  #   volumes:
+  #     - ./jk-alerter/config.yaml:/opt/elastalert/config.yaml
+  #     - ./alerts/rules/:/opt/elastalert/rules
+  #   restart: unless-stopped      
+  #   depends_on:
+  #     - elasticsearch
 
   #https://www.elastic.co/guide/en/elasticsearch/client/curator/current/configuration.html
   jk-curator:
@@ -118,26 +107,24 @@ services:
       - ZIPKIN_UI_LOGS_URL=http://localhost:5601/app/kibana#/discover/d0682f20-e0e9-11e7-9c68-0b9a0f0c183c?_g=(refreshInterval:(display:Off,pause:!f,value:0),time:(from:now-30d,mode:quick,to:now))&_a=(columns:!(X-B3-TraceId,app_name,level,message),filters:!(('$state':(store:appState),meta:(alias:!n,disabled:!f,index:'logs-*',key:X-B3-TraceId,negate:!f,params:(query:'trace',type:phrase),type:phrase,value:'trace'),query:(match:(X-B3-TraceId:(query:'{traceId}',type:phrase))))),index:'logs-*',interval:auto,query:(language:lucene,query:''),sort:!('@timestamp',desc))
     ports:
       - 9411:9411
-    networks: 
-      - webproxy
-      - elk        
+    # networks: 
+    #   - webproxy
     restart: unless-stopped      
-
-  logspout:
-    image: gliderlabs/logspout
-    command: syslog+tcp://logstash:5000
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
     depends_on:
-      - logstash
-    restart: always
+      - elasticsearch
 
-networks:
+  # logspout:
+  #   image: gliderlabs/logspout
+  #   command: syslog+tcp://logstash:5000
+  #   volumes:
+  #     - /var/run/docker.sock:/var/run/docker.sock
+  #   depends_on:
+  #     - logstash
+  #   restart: always
 
-  elk:
-    driver: bridge
-  webproxy:
-    external: true  
+# networks:
+#   webproxy:
+#     external: true  
 
 volumes:
   elasticsearch_data:
